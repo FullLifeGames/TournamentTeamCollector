@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="ShowdownReplayScouter.Core" Version="1.1.2" />
-    <PackageReference Include="TournamentParser.Core" Version="1.0.3" />
+    <PackageReference Include="TournamentParser.Core" Version="1.0.4" />
   </ItemGroup>
 
 </Project>

@@ -67,7 +67,7 @@ var jsonJustThreads = JsonConvert.SerializeObject(tournamentsToMatches.Select((k
         Id = kv.Value.Id,
         Locked = kv.Value.Locked
     })
-).ToDictionary(x => x.Key, x => x.Value));
+).OrderBy((kv) => kv.Value.Name).ToDictionary(x => x.Key, x => x.Value));
 
 await File.WriteAllTextAsync("outputJustThreads.json", jsonJustThreads).ConfigureAwait(false);
 
