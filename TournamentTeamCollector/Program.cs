@@ -82,8 +82,8 @@ foreach (var tournamentMatch in tournamentsToMatches)
         OutputPrinter.Print(
             new ShowdownReplayScouter.Core.Data.ScoutingRequest()
             {
-                User = tournamentMatch.Value.Name,
-                Tier = tournamentMatch.Value.Id
+                Users = new List<string> { tournamentMatch.Value.Name },
+                Tiers = new List<string> { tournamentMatch.Value.Id }
             },
             tournamentMatch.Value.Teams
         )
