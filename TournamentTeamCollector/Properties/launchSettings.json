@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TournamentTeamCollector": {
+      "commandName": "Project",
+      "commandLineArgs": "TournamentTeamCollector.db TournamentTeamCollector2.db"
+    }
+  }
+}

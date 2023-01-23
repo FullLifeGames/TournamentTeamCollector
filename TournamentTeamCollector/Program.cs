@@ -1,9 +1,35 @@
-﻿using Newtonsoft.Json;
+﻿using NeoSmart.Caching.Sqlite;
+using Newtonsoft.Json;
+using ShowdownReplayScouter.Core.Data;
 using ShowdownReplayScouter.Core.Util;
 //using TournamentParser.Data;
 using TournamentTeamCollector;
 
-var smogonTournament = new TournamentParser.Tournament.SmogonTournament();
+var smogonParserCachePath = args.Length > 0 ?
+    args[0] :
+    "/root/TournamentParser/SmogonTournamentParser.db";
+
+var parserCache = new SqliteCache(
+    new SqliteCacheOptions()
+    {
+        MemoryOnly = false,
+        CachePath = smogonParserCachePath,
+    }
+);
+
+var replayScouterCachePath = args.Length > 1 ?
+    args[1] :
+    "/home/apache/ShowdownReplayScouter.Cmd/ShowdownReplayScouter.db";
+
+var replayScouterCache = new SqliteCache(
+    new SqliteCacheOptions()
+    {
+        MemoryOnly = false,
+        CachePath = replayScouterCachePath,
+    }
+);
+
+var smogonTournament = new TournamentParser.Parser.SmogonParser(parserCache);
 
 /** Full Scan */
 var userRelationList = await smogonTournament.GetMatchesForUsers().ConfigureAwait(false);
@@ -38,38 +64,47 @@ foreach (var tournamentMatch in tournamentsToMatches)
     tournamentMatch.Value.Replays = tournamentMatch.Value.Replays.Distinct().ToList();
 }
 
-var replayScouter = new ShowdownReplayScouter.Core.ReplayScouter.ShowdownReplayScouter();
+var replayScouter = new ShowdownReplayScouter.Core.ReplayScouter.ShowdownReplayScouter(replayScouterCache);
 foreach (var tournamentMatch in tournamentsToMatches)
 {
     Console.WriteLine($"Scouting replays for: {tournamentMatch.Value.Name}");
     try
     {
-        var result = await replayScouter.ScoutReplaysAsync(new ShowdownReplayScouter.Core.Data.ScoutingRequest()
+        var result = await replayScouter.ScoutReplaysAsync(new ScoutingRequest()
         {
             Links = tournamentMatch.Value.Replays.Select((replay) => new Uri(replay))
         }).ConfigureAwait(false);
-        tournamentMatch.Value.Teams = result.Teams;
+        if (result != null)
+        {
+            tournamentMatch.Value.Teams = result.Teams;
+        }
     }
-    catch(Exception)
+    catch (Exception)
     {
         Console.Error.WriteLine($"Error on thread: {tournamentMatch.Value.Name}");
     }
 }
 
-var json = JsonConvert.SerializeObject(tournamentsToMatches);
+// serialize JSON directly to a file
+using (var file = File.CreateText("output.json"))
+{
+    var serializer = new JsonSerializer();
+    serializer.Serialize(file, tournamentsToMatches);
+}
 
-await File.WriteAllTextAsync("output.json", json).ConfigureAwait(false);
-
-var jsonJustThreads = JsonConvert.SerializeObject(tournamentsToMatches.Select((kv)
-    => new KeyValuePair<string, TournamentParser.Data.Thread>(kv.Key, new TournamentParser.Data.Thread()
-    {
-        Name = kv.Value.Name,
-        Id = kv.Value.Id,
-        Locked = kv.Value.Locked
-    })
-).OrderBy((kv) => kv.Value.Name).ToDictionary(x => x.Key, x => x.Value));
-
-await File.WriteAllTextAsync("outputJustThreads.json", jsonJustThreads).ConfigureAwait(false);
+// serialize JSON directly to a file
+using (var file = File.CreateText("outputJustThreads.json"))
+{
+    var serializer = new JsonSerializer();
+    serializer.Serialize(file, tournamentsToMatches.Select((kv)
+        => new KeyValuePair<string, TournamentParser.Data.Thread>(kv.Key, new TournamentParser.Data.Thread()
+        {
+            Name = kv.Value.Name,
+            Id = kv.Value.Id,
+            Locked = kv.Value.Locked
+        })
+    ).OrderBy((kv) => kv.Value.Name).ToDictionary(x => x.Key, x => x.Value));
+}
 
 if (!Directory.Exists("Tournaments"))
 {
@@ -78,14 +113,17 @@ if (!Directory.Exists("Tournaments"))
 
 foreach (var tournamentMatch in tournamentsToMatches)
 {
-    await File.WriteAllTextAsync($"Tournaments/{tournamentMatch.Value.Id}.txt",
-        OutputPrinter.Print(
-            new ShowdownReplayScouter.Core.Data.ScoutingRequest()
-            {
-                Users = new List<string> { tournamentMatch.Value.Name },
-                Tiers = new List<string> { tournamentMatch.Value.Id }
-            },
-            tournamentMatch.Value.Teams
-        )
-    ).ConfigureAwait(false);
+    if (tournamentMatch.Value.Name != null && tournamentMatch.Value.Id != null)
+    {
+        await File.WriteAllTextAsync($"Tournaments/{tournamentMatch.Value.Id}.txt",
+            OutputPrinter.Print(
+                new ScoutingRequest()
+                {
+                    Users = new List<string> { tournamentMatch.Value.Name },
+                    Tiers = new List<string> { tournamentMatch.Value.Id }
+                },
+                tournamentMatch.Value.Teams
+            )
+        ).ConfigureAwait(false);
+    }
 }
