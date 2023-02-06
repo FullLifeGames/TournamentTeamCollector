@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="NeoSmart.Caching.Sqlite" Version="6.1.0-preview1" />
-    <PackageReference Include="ShowdownReplayScouter.Core" Version="1.6.3" />
+    <PackageReference Include="ShowdownReplayScouter.Core" Version="1.7.0" />
     <PackageReference Include="TournamentParser.Core" Version="2.0.4" />
   </ItemGroup>
 
