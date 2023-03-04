@@ -65,31 +65,36 @@ foreach (var tournamentMatch in tournamentsToMatches)
 }
 
 var replayScouter = new ShowdownReplayScouter.Core.ReplayScouter.ShowdownReplayScouter(replayScouterCache);
+var count = 1;
+var maxLength = tournamentsToMatches.Count;
 foreach (var tournamentMatch in tournamentsToMatches)
 {
-    Console.WriteLine($"Scouting replays for: {tournamentMatch.Value.Name}");
+    Console.WriteLine($"Scouting {count}/{maxLength} replays for: {tournamentMatch.Value.Name}");
     try
     {
-        var result = await replayScouter.ScoutReplaysAsync(new ScoutingRequest()
+        var scoutingResult = await replayScouter.ScoutReplaysAsync(new ScoutingRequest()
         {
             Links = tournamentMatch.Value.Replays.Select((replay) => new Uri(replay))
         }).ConfigureAwait(false);
-        if (result != null)
+        if (scoutingResult is not null)
         {
-            tournamentMatch.Value.Teams = result.Teams;
+            tournamentMatch.Value.ScoutingResult = new ApiScoutingResult(scoutingResult);
         }
     }
     catch (Exception)
     {
         Console.Error.WriteLine($"Error on thread: {tournamentMatch.Value.Name}");
     }
+    count++;
 }
 
 // serialize JSON directly to a file
 using (var file = File.CreateText("output.json"))
 {
     var serializer = new JsonSerializer();
-    serializer.Serialize(file, tournamentsToMatches);
+    serializer.Serialize(file, tournamentsToMatches.Select((kv)
+        => new KeyValuePair<string, OldThreadWithReplay>(kv.Key, new OldThreadWithReplay(kv.Value))
+    ).OrderBy((kv) => kv.Value.Name).ToDictionary(x => x.Key, x => x.Value));
 }
 
 // serialize JSON directly to a file
@@ -113,8 +118,30 @@ if (!Directory.Exists("Tournaments"))
 
 foreach (var tournamentMatch in tournamentsToMatches)
 {
-    if (tournamentMatch.Value.Name != null && tournamentMatch.Value.Id != null)
+    var teams = tournamentMatch.Value.ScoutingResult?.Teams;
+    if (tournamentMatch.Value.Name is not null
+        && tournamentMatch.Value.Id is not null
+        && tournamentMatch.Value.ScoutingResult is not null
+        && teams is not null
+    )
     {
+
+        tournamentMatch.Value.ScoutingResult.Outputs = OutputPrinter.PrintObject(
+               new ScoutingRequest()
+               {
+                   Users = new List<string> { tournamentMatch.Value.Name },
+                   Tiers = new List<string> { tournamentMatch.Value.Id }
+               },
+               teams
+           );
+
+        // serialize JSON directly to a file
+        using (var file = File.CreateText($"Tournaments/{tournamentMatch.Value.Id}.json"))
+        {
+            var serializer = new JsonSerializer();
+            serializer.Serialize(file, tournamentMatch.Value.ScoutingResult);
+        }
+
         await File.WriteAllTextAsync($"Tournaments/{tournamentMatch.Value.Id}.txt",
             OutputPrinter.Print(
                 new ScoutingRequest()
@@ -122,8 +149,29 @@ foreach (var tournamentMatch in tournamentsToMatches)
                     Users = new List<string> { tournamentMatch.Value.Name },
                     Tiers = new List<string> { tournamentMatch.Value.Id }
                 },
-                tournamentMatch.Value.Teams
+                teams
             )
         ).ConfigureAwait(false);
     }
+}
+
+// serialize JSON directly to a file
+using (var file = File.CreateText("Tournaments/outputJustThreads.json"))
+{
+    var serializer = new JsonSerializer();
+    serializer.Serialize(file, tournamentsToMatches.Select((kv)
+        => new KeyValuePair<string, TournamentParser.Data.Thread>(kv.Key, new TournamentParser.Data.Thread()
+        {
+            Name = kv.Value.Name,
+            Id = kv.Value.Id,
+            Locked = kv.Value.Locked
+        })
+    ).OrderBy((kv) => kv.Value.Name).ToDictionary(x => x.Key, x => x.Value));
+}
+
+// serialize JSON directly to a file
+using (var file = File.CreateText("newOutput.json"))
+{
+    var serializer = new JsonSerializer();
+    serializer.Serialize(file, tournamentsToMatches);
 }

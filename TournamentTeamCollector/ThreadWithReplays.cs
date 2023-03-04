@@ -16,6 +16,6 @@ namespace TournamentTeamCollector
         }
 
         public List<string> Replays { get; set; } = new List<string>();
-        public IEnumerable<Team> Teams { get; set; } = new List<Team>();
+        public ApiScoutingResult? ScoutingResult { get; set; }
     }
 }
