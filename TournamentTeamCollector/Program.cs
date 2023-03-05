@@ -36,9 +36,9 @@ var userRelationList = await smogonTournament.GetMatchesForUsers().ConfigureAwai
 /* */
 
 /** Single Scan
-await smogonTournament.ThreadScanner.AnalyzeTopic("https://www.smogon.com/forums/threads/official-smogon-tournament-xvii-finals-won-by-empo.3680402/", new CancellationToken()).ConfigureAwait(false);
+await smogonTournament.ThreadScanner.AnalyzeTopic("https://www.smogon.com/forums/threads/spl-xiii-replays.3695657/", new CancellationToken()).ConfigureAwait(false);
 var userRelationList = smogonTournament.ThreadScanner.NameUserTranslation;
-*/
+/* */
 
 //var userRelationList = JsonConvert.DeserializeObject<IDictionary<string, User>>(await File.ReadAllTextAsync("userRelationOutput.json"));
 
@@ -125,7 +125,6 @@ foreach (var tournamentMatch in tournamentsToMatches)
         && teams is not null
     )
     {
-
         tournamentMatch.Value.ScoutingResult.Outputs = OutputPrinter.PrintObject(
                new ScoutingRequest()
                {
