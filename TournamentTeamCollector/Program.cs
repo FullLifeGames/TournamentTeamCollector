@@ -9,6 +9,9 @@ var smogonParserCachePath = args.Length > 0 ?
     args[0] :
     "/root/TournamentParser/SmogonTournamentParser.db";
 
+// To experiment with weird results
+TournamentParser.Util.Common.ParallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 1 };
+
 var parserCache = new SqliteCache(
     new SqliteCacheOptions()
     {
@@ -35,8 +38,25 @@ var smogonTournament = new TournamentParser.Parser.SmogonParser(parserCache);
 var userRelationList = await smogonTournament.GetMatchesForUsers().ConfigureAwait(false);
 /* */
 
-/** Single Scan
-await smogonTournament.ThreadScanner.AnalyzeTopic("https://www.smogon.com/forums/threads/spl-xiii-replays.3695657/", new CancellationToken()).ConfigureAwait(false);
+/** Single Scan 
+var tasks = new List<Task>
+{
+    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-finals-won-by-team-raiders.3699347/", new CancellationToken()),
+    smogonTournament.ThreadScanner.AnalyzeTopic("https://www.smogon.com/forums/threads/spl-xiii-replays.3695657/", new CancellationToken()),
+    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-semifinals.3698695/", new CancellationToken()),
+    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-9.3698322/", new CancellationToken()),
+    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-8.3698000/", new CancellationToken()),
+    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-7.3697650/", new CancellationToken()),
+    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-6.3697278/", new CancellationToken()),
+    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-5.3696960/", new CancellationToken()),
+    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-4.3696633/", new CancellationToken()),
+    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-3.3696316/", new CancellationToken()),
+    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-2.3695985/", new CancellationToken()),
+    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-1.3695656/", new CancellationToken()),
+};
+
+Task.WaitAll(tasks.ToArray());
+
 var userRelationList = smogonTournament.ThreadScanner.NameUserTranslation;
 /* */
 
@@ -69,7 +89,7 @@ var count = 1;
 var maxLength = tournamentsToMatches.Count;
 foreach (var tournamentMatch in tournamentsToMatches)
 {
-    Console.WriteLine($"Scouting {count}/{maxLength} replays for: {tournamentMatch.Value.Name}");
+    Console.WriteLine($"Scouting {tournamentMatch.Value.Replays.Count} replays for: {tournamentMatch.Value.Name} ({count}/{maxLength})");
     try
     {
         var scoutingResult = await replayScouter.ScoutReplaysAsync(new ScoutingRequest()
@@ -79,6 +99,7 @@ foreach (var tournamentMatch in tournamentsToMatches)
         if (scoutingResult is not null)
         {
             tournamentMatch.Value.ScoutingResult = new ApiScoutingResult(scoutingResult);
+            Console.WriteLine($"Scouted {tournamentMatch.Value.ScoutingResult.Teams.Count()} teams for: {tournamentMatch.Value.Name} ({count}/{maxLength})");
         }
     }
     catch (Exception)
