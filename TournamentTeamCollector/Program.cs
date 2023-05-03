@@ -1,4 +1,4 @@
-﻿using NeoSmart.Caching.Sqlite;
+﻿using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Newtonsoft.Json;
 using ShowdownReplayScouter.Core.Data;
 using ShowdownReplayScouter.Core.Util;
@@ -12,11 +12,10 @@ var smogonParserCachePath = args.Length > 0 ?
 // To experiment with weird results
 TournamentParser.Util.Common.ParallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 1 };
 
-var parserCache = new SqliteCache(
-    new SqliteCacheOptions()
+var parserCache = new RedisCache(new RedisCacheOptions()
     {
-        MemoryOnly = false,
-        CachePath = smogonParserCachePath,
+        Configuration = "localhost;connectTimeout=10000",
+        InstanceName = "SmogonTournamentParser",
     }
 );
 
@@ -24,11 +23,10 @@ var replayScouterCachePath = args.Length > 1 ?
     args[1] :
     "/home/apache/ShowdownReplayScouter.Cmd/ShowdownReplayScouter.db";
 
-var replayScouterCache = new SqliteCache(
-    new SqliteCacheOptions()
+var replayScouterCache = new RedisCache(new RedisCacheOptions()
     {
-        MemoryOnly = false,
-        CachePath = replayScouterCachePath,
+        Configuration = "localhost",
+        InstanceName = "ShowdownReplayScouter",
     }
 );
 

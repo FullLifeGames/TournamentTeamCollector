@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="6.0.16" />
     <PackageReference Include="NeoSmart.Caching.Sqlite" Version="6.1.0-preview1" />
     <PackageReference Include="ShowdownReplayScouter.Core" Version="1.8.0" />
     <PackageReference Include="TournamentParser.Core" Version="2.0.8" />
