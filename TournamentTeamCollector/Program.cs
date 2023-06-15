@@ -10,7 +10,7 @@ var smogonParserCachePath = args.Length > 0 ?
     "/root/TournamentParser/SmogonTournamentParser.db";
 
 // To experiment with weird results
-TournamentParser.Util.Common.ParallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 1 };
+// TournamentParser.Util.Common.ParallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 1 };
 
 var parserCache = new SqliteCache(
     new SqliteCacheOptions()
