@@ -38,7 +38,7 @@ var smogonTournament = new TournamentParser.Parser.SmogonParser(parserCache);
 var userRelationList = await smogonTournament.GetMatchesForUsers().ConfigureAwait(false);
 /* */
 
-/** Single Scan 
+/** Single Scan
 var tasks = new List<Task>
 {
     smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-finals-won-by-team-raiders.3699347/", new CancellationToken()),
