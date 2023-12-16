@@ -12,6 +12,8 @@ var smogonParserCachePath = args.Length > 0 ?
 // To experiment with weird results
 // TournamentParser.Util.Common.ParallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 1 };
 
+SQLitePCL.Batteries_V2.Init();
+
 var parserCache = new SqliteCache(
     new SqliteCacheOptions()
     {
