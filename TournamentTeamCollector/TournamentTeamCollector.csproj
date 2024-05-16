@@ -11,7 +11,7 @@
     <PackageReference Include="NeoSmart.Caching.Sqlite" Version="7.0.1" />
     <PackageReference Include="ShowdownReplayScouter.Core" Version="1.11.4" />
     <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.7" />
-    <PackageReference Include="TournamentParser.Core" Version="2.2.1" />
+    <PackageReference Include="TournamentParser.Core" Version="2.3.0" />
   </ItemGroup>
 
 </Project>
