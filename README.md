@@ -23,7 +23,7 @@ The replays are downloaded from replay.pokemonshowdown.com and analysed; `--repl
 - About 40 % of the replays linked in Smogon's tournaments are gone (404). The collector remembers them in the same database and asks for them again after 30 days, instead of in every run.
 - If the server refuses three requests in a row (403, or 429/5xx after the retries), the run stops with exit code 2.
 - `--max-requests` spreads a long first run over several runs: the run stops after that many requests with exit code 3, and the next one continues from the analysed replays. The replays of a tournament are scouted in chunks of 20, each stored when it is done.
-- ShowdownReplayScouter 1.15 stores its analysis under new keys (`<replay>.json+v2+<player>`; it now counts a form change such as Zacian-Crowned as one Pokémon). A replay database of an older version is not used by it: the first run with 1.15 downloads every replay again, about 26,500 replays or 7.5 hours at the default delay.
+- ShowdownReplayScouter 1.15 stores its analysis under new keys (`<replay>.json+v2+<player>`; it now counts a form change such as Zacian-Crowned as one Pokémon), so a replay database of an older version is of no use to it. TournamentParser's output of 2026-11-16 names 27,494 tournaments with 467,449 distinct replays: a first run reads them all once, about 5½ days at the default delay. Spread it over several runs with `--max-requests`.
 
 ### Output
 
@@ -34,7 +34,7 @@ After a complete run it writes into the working folder:
 - `newOutput.json`: thread id to thread with replays and the scouting result including the formatted outputs
 - `Tournaments/<thread id>.json` and `Tournaments/<thread id>.txt` for each tournament, and `Tournaments/outputJustThreads.json`
 
-Teams of replays that are gone are left out. The files are written into a staging folder and then moved into place, so `Tournaments/` holds only the tournaments of the current run. Matches without any tournament, a bot check, an unexpected page, a refusing replay server or a reached request limit leave all outputs as they were.
+Teams of replays that are gone are left out. The tournaments are scouted in the order of `output.json` and written one at a time, so a run holds the teams of one tournament, not of all (reading the 440 MB `output.json` of 2026-11-16 takes about 250 MB). The files are written into a staging folder and then moved into place, so `Tournaments/` holds only the tournaments of the current run. Matches without any tournament, a bot check, an unexpected page, a refusing replay server or a reached request limit leave all outputs as they were.
 
 Exit codes: 0 done, 1 error, 2 bot check, unexpected page or replay server refusing requests, 3 request limit reached, 64 usage.
 

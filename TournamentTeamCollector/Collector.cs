@@ -41,7 +41,7 @@ namespace TournamentTeamCollector
             Dictionary<string, ThreadWithReplays> tournaments;
             try
             {
-                tournaments = TournamentMatches.GroupByThread((await LoadMatchesAsync(options).ConfigureAwait(false)).Values);
+                tournaments = await LoadTournamentsAsync(options).ConfigureAwait(false);
             }
             catch (Exception e) when (e is SmogonAccessBlockedException or UnexpectedPageException)
             {
@@ -63,6 +63,7 @@ namespace TournamentTeamCollector
                 Console.Error.WriteLine(e);
                 return ExitCodes.Error;
             }
+            Console.WriteLine($"{tournaments.Count} tournaments with {tournaments.Values.Sum(t => t.Replays.Count)} replays");
             if (tournaments.Count == 0)
             {
                 // An empty output would replace every tournament on the site.
@@ -81,9 +82,11 @@ namespace TournamentTeamCollector
             ShowdownReplayScouter.Core.Util.Common.HttpClient = client;
             try
             {
-                await ScoutAsync(tournaments, new Scouter(replayCache), options, guard.StopToken).ConfigureAwait(false);
-                await OutputWriter.WriteAsync(options.OutputDirectory, tournaments).ConfigureAwait(false);
-                Console.WriteLine($"Wrote {tournaments.Count} tournaments with {tournaments.Values.Sum(t => t.ScoutingResult?.Teams.Count() ?? 0)} teams");
+                // Removes what it wrote unless committed: a stop or an error leaves the previous outputs as they were.
+                using var writer = new OutputWriter(options.OutputDirectory);
+                await ScoutAsync(tournaments, new Scouter(replayCache), options, writer, guard.StopToken).ConfigureAwait(false);
+                await writer.CommitAsync().ConfigureAwait(false);
+                Console.WriteLine($"Wrote {tournaments.Count} tournaments with {writer.Teams} teams");
                 return ExitCodes.Done;
             }
             catch (Exception) when (guard.StopReason != StopReason.None)
@@ -105,12 +108,12 @@ namespace TournamentTeamCollector
             }
         }
 
-        private static async Task<IDictionary<string, User>> LoadMatchesAsync(RunOptions options)
+        private static async Task<Dictionary<string, ThreadWithReplays>> LoadTournamentsAsync(RunOptions options)
         {
             if (options.MatchesPath is string matchesPath && File.Exists(matchesPath))
             {
                 Console.WriteLine($"Reading the matches from {matchesPath}");
-                return TournamentMatches.ReadParserOutput(matchesPath);
+                return TournamentMatches.GroupByThread(TournamentMatches.ReadParserOutput(matchesPath));
             }
             if (options.ParserDatabasePath is string parserDatabasePath)
             {
@@ -118,7 +121,7 @@ namespace TournamentTeamCollector
                 {
                     Console.WriteLine($"{options.MatchesPath} does not exist; crawling Smogon instead");
                 }
-                return await CrawlSmogonAsync(parserDatabasePath, options.MaxRequests).ConfigureAwait(false);
+                return TournamentMatches.GroupByThread((await CrawlSmogonAsync(parserDatabasePath, options.MaxRequests).ConfigureAwait(false)).Values);
             }
             throw new FileNotFoundException($"{options.MatchesPath} does not exist", options.MatchesPath);
         }
@@ -156,10 +159,14 @@ namespace TournamentTeamCollector
         /// </summary>
         public const int ReplaysPerScoutingCall = 20;
 
-        private static async Task ScoutAsync(Dictionary<string, ThreadWithReplays> tournaments, Scouter scouter, RunOptions options, CancellationToken stop)
+        /// <summary>
+        /// Scouts the tournaments in the order of output.json and hands each to the writer right away, then lets go of its
+        /// teams: a run holds the teams of one tournament at a time.
+        /// </summary>
+        private static async Task ScoutAsync(Dictionary<string, ThreadWithReplays> tournaments, Scouter scouter, RunOptions options, OutputWriter writer, CancellationToken stop)
         {
             var count = 1;
-            foreach (var tournament in tournaments.Values)
+            foreach (var (id, tournament) in tournaments.OrderBy(kv => kv.Value.Name, OutputWriter.NameOrder))
             {
                 Console.WriteLine($"Scouting {tournament.Replays.Count} replays for: {tournament.Name} ({count}/{tournaments.Count})");
                 try
@@ -186,6 +193,8 @@ namespace TournamentTeamCollector
                 {
                     Console.Error.WriteLine($"Error on thread: {tournament.Name}: {e.Message}");
                 }
+                await writer.AddAsync(id, tournament).ConfigureAwait(false);
+                tournament.ScoutingResult = null;
                 count++;
             }
         }

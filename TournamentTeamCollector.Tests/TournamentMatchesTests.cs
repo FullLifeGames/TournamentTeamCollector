@@ -14,7 +14,7 @@ namespace TournamentTeamCollector.Tests
                 ParserOutput.Match("200", "OU Cup - Finals", "Alice", "Carol", "https://replay.pokemonshowdown.com/gen9ou-1")
             ));
 
-            var users = TournamentMatches.ReadParserOutput(dir.File("output.json"));
+            var users = TournamentMatches.ReadParserOutput(dir.File("output.json")).ToDictionary(user => user.Name!);
 
             Assert.That(users.Keys, Is.EquivalentTo(new[] { "Alice", "Bob", "Carol", "Dave" }));
             Assert.That(users["Alice"].Matches, Has.Count.EqualTo(2));
@@ -22,6 +22,18 @@ namespace TournamentTeamCollector.Tests
             Assert.That(match.Thread?.Id, Is.EqualTo("100"));
             Assert.That(match.Thread?.Name, Is.EqualTo("UU Open - Round 1"));
             Assert.That(match.Replays, Is.EqualTo(new[] { "https://replay.pokemonshowdown.com/gen9uu-1", "https://replay.pokemonshowdown.com/gen9uu-2" }));
+        }
+
+        [TestCase("")]
+        [TestCase("[]")]
+        [TestCase("{\"Alice\":{\"n\":\"Alice\",\"m\":[]}")]
+        public void AnOutputThatIsNoCompleteObjectOfUsersIsAnError(string content)
+        {
+            using var dir = new TempDirectory();
+            File.WriteAllText(dir.File("output.json"), content);
+
+            Assert.That(() => TournamentMatches.ReadParserOutput(dir.File("output.json")).ToList(),
+                Throws.InstanceOf<InvalidDataException>().Or.InstanceOf<Newtonsoft.Json.JsonException>());
         }
 
         [Test]
