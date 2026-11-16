@@ -55,6 +55,9 @@ namespace TournamentTeamCollector.Tests
             Assert.That(File.ReadAllText(Out("output.json")), Is.EqualTo("previous"));
             Assert.That(File.Exists(Out("Tournaments/3600000.json")), Is.True);
             Assert.That(File.Exists(Out("newOutput.json")), Is.False);
+            // Nothing of the stopped run is left behind.
+            Assert.That(Directory.GetFileSystemEntries(_options.OutputDirectory).Select(Path.GetFileName),
+                Is.EquivalentTo(new[] { "output.json", "Tournaments" }));
         }
 
         [Test]
@@ -112,14 +115,14 @@ namespace TournamentTeamCollector.Tests
 
             Assert.That(await Collector.RunAsync(_options, _server), Is.EqualTo(ExitCodes.RequestLimit));
             AssertPreviousOutputsUntouched();
-            Assert.That(_server.Requests, Is.EqualTo(new[] { Replay + ".json" }));
+            // Tournaments are scouted by name: "Another Cup" first.
+            Assert.That(_server.Requests, Is.EqualTo(new[] { OtherGoneReplay + ".json" }));
 
             _options.MaxRequests = 0;
             Assert.That(await Collector.RunAsync(_options, _server), Is.EqualTo(ExitCodes.Done));
 
-            // The stop fell into the chunk of the analysed replay, so it is requested again (see
-            // ATournamentLargerThanTheRequestLimitIsDoneOverSeveralRuns for kept chunks); the old output's tournaments are gone.
-            Assert.That(_server.Requests, Has.Count.EqualTo(4));
+            // The replay found gone in the first run is not requested again; the old output's tournaments are gone.
+            Assert.That(_server.Requests, Has.Count.EqualTo(3));
             Assert.That(JObject.Parse(File.ReadAllText(Out("output.json")))["3700001"]!["Teams"], Has.Count.EqualTo(2));
             Assert.That(File.Exists(Out("Tournaments/3600000.json")), Is.False);
         }

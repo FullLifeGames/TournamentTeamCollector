@@ -7,13 +7,29 @@ namespace TournamentTeamCollector
     {
         /// <summary>
         /// Reads output.json as TournamentParser.Cmd writes it after a complete run: user name to user with matches,
-        /// the same dictionary <c>SmogonParser.GetMatchesForUsers()</c> returns.
+        /// the same dictionary <c>SmogonParser.GetMatchesForUsers()</c> returns. The users are read one at a time: the file
+        /// holds every match once per player (440 MB in November 2026), and only the threads and replays are kept.
         /// </summary>
-        public static IDictionary<string, User> ReadParserOutput(string path)
+        public static IEnumerable<User> ReadParserOutput(string path)
         {
             using var reader = new JsonTextReader(File.OpenText(path));
-            return new JsonSerializer().Deserialize<Dictionary<string, User>>(reader)
-                ?? throw new InvalidDataException($"{path} holds no users");
+            var serializer = new JsonSerializer();
+            if (!reader.Read() || reader.TokenType != JsonToken.StartObject)
+            {
+                throw new InvalidDataException($"{path} is not an object of users");
+            }
+            while (reader.Read() && reader.TokenType == JsonToken.PropertyName)
+            {
+                reader.Read();
+                if (serializer.Deserialize<User>(reader) is User user)
+                {
+                    yield return user;
+                }
+            }
+            if (reader.TokenType != JsonToken.EndObject)
+            {
+                throw new InvalidDataException($"{path} ends before its last user");
+            }
         }
 
         /// <summary>
