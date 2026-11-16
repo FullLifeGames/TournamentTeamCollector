@@ -2,16 +2,16 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NeoSmart.Caching.Sqlite" Version="7.0.1" />
-    <PackageReference Include="ShowdownReplayScouter.Core" Version="1.13.0" />
-    <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.7" />
-    <PackageReference Include="TournamentParser.Core" Version="2.4.1" />
+    <PackageReference Include="NeoSmart.Caching.Sqlite" Version="9.0.3" />
+    <PackageReference Include="ShowdownReplayScouter.Core" Version="1.15.2" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <PackageReference Include="TournamentParser.Core" Version="3.0.0" />
   </ItemGroup>
 
 </Project>

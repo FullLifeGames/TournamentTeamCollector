@@ -1,199 +1,77 @@
-﻿using NeoSmart.Caching.Sqlite;
-using Newtonsoft.Json;
-using ShowdownReplayScouter.Core.Data;
-using ShowdownReplayScouter.Core.Util;
-//using TournamentParser.Data;
+﻿using System.Globalization;
 using TournamentTeamCollector;
 
-var smogonParserCachePath = args.Length > 0 ?
-    args[0] :
-    "/root/TournamentParser/SmogonTournamentParser.db";
+const string Usage = """
+    Usage: TournamentTeamCollector --matches <output.json> [--parser-db <SmogonTournamentParser.db>]
+                                   [--replay-db <ShowdownReplayScouter.db>] [--delay <seconds>]
+                                   [--max-requests <count>]
+           TournamentTeamCollector <SmogonTournamentParser.db> [<ShowdownReplayScouter.db>]
 
-// To experiment with weird results
-// TournamentParser.Util.Common.ParallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 1 };
+      --matches <file>        output.json of TournamentParser, written after its last complete run: the
+                              tournament matches whose replays are scouted. Sends no request to Smogon.
+      --parser-db <file>      Fallback when --matches is not given or its file does not exist: crawl Smogon
+                              with TournamentParser 3.0 (headless Chromium for the bot check), crawl state
+                              in this database. The second form does the same.
+      --replay-db <file>      Analysed replays, and replays the server no longer has
+                              (default ShowdownReplayScouter.db).
+      --delay <seconds>       Pause between two requests to the replay server (default 1).
+      --max-requests <count>  Stop after this many requests to the replay server (and to Smogon when
+                              crawling); the next run continues from there (default 0, no limit).
 
-SQLitePCL.Batteries_V2.Init();
+    Writes output.json, outputJustThreads.json, newOutput.json and Tournaments/ into the working folder,
+    only after a complete run. Replays the server answers with 404 are asked for again after 30 days.
+    Exit codes: 0 done, 1 error, 2 bot check, unexpected page or replay server refusing requests,
+    3 request limit reached, 64 usage.
+    """;
 
-var parserCache = new SqliteCache(
-    new SqliteCacheOptions()
-    {
-        MemoryOnly = false,
-        CachePath = smogonParserCachePath,
-    }
-);
-
-var replayScouterCachePath = args.Length > 1 ?
-    args[1] :
-    "/home/apache/ShowdownReplayScouter.Cmd/ShowdownReplayScouter.db";
-
-var replayScouterCache = new SqliteCache(
-    new SqliteCacheOptions()
-    {
-        MemoryOnly = false,
-        CachePath = replayScouterCachePath,
-    }
-);
-
-var smogonTournament = new TournamentParser.Parser.SmogonParser(parserCache);
-
-/** Full Scan */
-var userRelationList = await smogonTournament.GetMatchesForUsers().ConfigureAwait(false);
-/* */
-
-/** Single Scan
-var tasks = new List<Task>
+var options = new RunOptions();
+var positional = new List<string>();
+for (var i = 0; i < args.Length; i++)
 {
-    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-finals-won-by-team-raiders.3699347/", new CancellationToken()),
-    smogonTournament.ThreadScanner.AnalyzeTopic("https://www.smogon.com/forums/threads/spl-xiii-replays.3695657/", new CancellationToken()),
-    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-semifinals.3698695/", new CancellationToken()),
-    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-9.3698322/", new CancellationToken()),
-    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-8.3698000/", new CancellationToken()),
-    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-7.3697650/", new CancellationToken()),
-    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-6.3697278/", new CancellationToken()),
-    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-5.3696960/", new CancellationToken()),
-    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-4.3696633/", new CancellationToken()),
-    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-3.3696316/", new CancellationToken()),
-    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-2.3695985/", new CancellationToken()),
-    smogonTournament.ThreadScanner.AnalyzeTopic("http://www.smogon.com/forums/threads/smogon-premier-league-xiii-week-1.3695656/", new CancellationToken()),
-};
-
-Task.WaitAll(tasks.ToArray());
-
-var userRelationList = smogonTournament.ThreadScanner.NameUserTranslation;
-/* */
-
-//var userRelationList = JsonConvert.DeserializeObject<IDictionary<string, User>>(await File.ReadAllTextAsync("userRelationOutput.json"));
-
-var tournamentsToMatches = new Dictionary<string, ThreadWithReplays>();
-
-foreach (var userRelation in userRelationList)
-{
-    foreach (var match in userRelation.Value.Matches)
+    switch (args[i])
     {
-        if (match.Thread?.Id is not null)
-        {
-            if (!tournamentsToMatches.ContainsKey(match.Thread.Id))
-            {
-                tournamentsToMatches.Add(match.Thread.Id, new ThreadWithReplays(match.Thread));
-            }
-            tournamentsToMatches[match.Thread.Id].Replays.AddRange(match.Replays);
-        }
+        case "--matches" when i + 1 < args.Length:
+            options.MatchesPath = args[++i];
+            break;
+        case "--parser-db" when i + 1 < args.Length:
+            options.ParserDatabasePath = args[++i];
+            break;
+        case "--replay-db" when i + 1 < args.Length:
+            options.ReplayDatabasePath = args[++i];
+            break;
+        case "--delay" when i + 1 < args.Length && double.TryParse(args[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) && seconds >= 0:
+            options.RequestDelay = TimeSpan.FromSeconds(seconds);
+            i++;
+            break;
+        case "--max-requests" when i + 1 < args.Length && int.TryParse(args[i + 1], out var maxRequests) && maxRequests >= 0:
+            options.MaxRequests = maxRequests;
+            i++;
+            break;
+        case "-h" or "--help":
+            Console.WriteLine(Usage);
+            return ExitCodes.Done;
+        case var positionalArgument when !positionalArgument.StartsWith('-') && positional.Count < 2:
+            positional.Add(positionalArgument);
+            break;
+        default:
+            Console.Error.WriteLine($"Unknown or incomplete argument: {args[i]}");
+            Console.Error.WriteLine(Usage);
+            return ExitCodes.Usage;
     }
 }
-
-foreach (var tournamentMatch in tournamentsToMatches)
+// The form of version 1: TournamentTeamCollector <SmogonTournamentParser.db> [<ShowdownReplayScouter.db>]
+if (positional.Count > 0)
 {
-    tournamentMatch.Value.Replays = tournamentMatch.Value.Replays.Distinct().ToList();
+    options.ParserDatabasePath ??= positional[0];
+}
+if (positional.Count > 1)
+{
+    options.ReplayDatabasePath = positional[1];
+}
+if (options.MatchesPath == null && options.ParserDatabasePath == null)
+{
+    Console.Error.WriteLine(Usage);
+    return ExitCodes.Usage;
 }
 
-var replayScouter = new ShowdownReplayScouter.Core.ReplayScouter.ShowdownReplayScouter(replayScouterCache);
-var count = 1;
-var maxLength = tournamentsToMatches.Count;
-foreach (var tournamentMatch in tournamentsToMatches)
-{
-    Console.WriteLine($"Scouting {tournamentMatch.Value.Replays.Count} replays for: {tournamentMatch.Value.Name} ({count}/{maxLength})");
-    try
-    {
-        var scoutingResult = await replayScouter.ScoutReplaysAsync(new ScoutingRequest()
-        {
-            Links = tournamentMatch.Value.Replays.Select((replay) => new Uri(replay))
-        }).ConfigureAwait(false);
-        if (scoutingResult is not null)
-        {
-            tournamentMatch.Value.ScoutingResult = new ApiScoutingResult(scoutingResult);
-            Console.WriteLine($"Scouted {tournamentMatch.Value.ScoutingResult.Teams.Count()} teams for: {tournamentMatch.Value.Name} ({count}/{maxLength})");
-        }
-    }
-    catch (Exception)
-    {
-        Console.Error.WriteLine($"Error on thread: {tournamentMatch.Value.Name}");
-    }
-    count++;
-}
-
-// serialize JSON directly to a file
-using (var file = File.CreateText("output.json"))
-{
-    var serializer = new JsonSerializer();
-    serializer.Serialize(file, tournamentsToMatches.Select((kv)
-        => new KeyValuePair<string, OldThreadWithReplay>(kv.Key, new OldThreadWithReplay(kv.Value))
-    ).OrderBy((kv) => kv.Value.Name).ToDictionary(x => x.Key, x => x.Value));
-}
-
-// serialize JSON directly to a file
-using (var file = File.CreateText("outputJustThreads.json"))
-{
-    var serializer = new JsonSerializer();
-    serializer.Serialize(file, tournamentsToMatches.Select((kv)
-        => new KeyValuePair<string, TournamentParser.Data.Thread>(kv.Key, new TournamentParser.Data.Thread()
-        {
-            Name = kv.Value.Name,
-            Id = kv.Value.Id,
-            Locked = kv.Value.Locked
-        })
-    ).OrderBy((kv) => kv.Value.Name).ToDictionary(x => x.Key, x => x.Value));
-}
-
-if (!Directory.Exists("Tournaments"))
-{
-    Directory.CreateDirectory("Tournaments");
-}
-
-foreach (var tournamentMatch in tournamentsToMatches)
-{
-    var teams = tournamentMatch.Value.ScoutingResult?.Teams;
-    if (tournamentMatch.Value.Name is not null
-        && tournamentMatch.Value.Id is not null
-        && tournamentMatch.Value.ScoutingResult is not null
-        && teams is not null
-    )
-    {
-        tournamentMatch.Value.ScoutingResult.Outputs = OutputPrinter.PrintObject(
-               new ScoutingRequest()
-               {
-                   Users = new List<string> { tournamentMatch.Value.Name },
-                   Tiers = new List<string> { tournamentMatch.Value.Id }
-               },
-               teams
-           );
-
-        // serialize JSON directly to a file
-        using (var file = File.CreateText($"Tournaments/{tournamentMatch.Value.Id}.json"))
-        {
-            var serializer = new JsonSerializer();
-            serializer.Serialize(file, tournamentMatch.Value.ScoutingResult);
-        }
-
-        await File.WriteAllTextAsync($"Tournaments/{tournamentMatch.Value.Id}.txt",
-            OutputPrinter.Print(
-                new ScoutingRequest()
-                {
-                    Users = new List<string> { tournamentMatch.Value.Name },
-                    Tiers = new List<string> { tournamentMatch.Value.Id }
-                },
-                teams
-            )
-        ).ConfigureAwait(false);
-    }
-}
-
-// serialize JSON directly to a file
-using (var file = File.CreateText("Tournaments/outputJustThreads.json"))
-{
-    var serializer = new JsonSerializer();
-    serializer.Serialize(file, tournamentsToMatches.Select((kv)
-        => new KeyValuePair<string, TournamentParser.Data.Thread>(kv.Key, new TournamentParser.Data.Thread()
-        {
-            Name = kv.Value.Name,
-            Id = kv.Value.Id,
-            Locked = kv.Value.Locked
-        })
-    ).OrderBy((kv) => kv.Value.Name).ToDictionary(x => x.Key, x => x.Value));
-}
-
-// serialize JSON directly to a file
-using (var file = File.CreateText("newOutput.json"))
-{
-    var serializer = new JsonSerializer();
-    serializer.Serialize(file, tournamentsToMatches);
-}
+return await Collector.RunAsync(options).ConfigureAwait(false);
