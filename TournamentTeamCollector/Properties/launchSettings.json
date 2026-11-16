@@ -2,7 +2,7 @@
   "profiles": {
     "TournamentTeamCollector": {
       "commandName": "Project",
-      "commandLineArgs": "SmogonTournamentParser.db ShowdownReplayScouter.db"
+      "commandLineArgs": "--matches tournament-parser-output.json --replay-db ShowdownReplayScouter.db"
     }
   }
 }

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TournamentTeamCollector", "TournamentTeamCollector\TournamentTeamCollector.csproj", "{A1FF1885-E7F3-4E8B-BFF9-57E9D696F2BB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TournamentTeamCollector.Tests", "TournamentTeamCollector.Tests\TournamentTeamCollector.Tests.csproj", "{29FBE171-45CE-4CAE-BC99-4DB09E07ACA6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{A1FF1885-E7F3-4E8B-BFF9-57E9D696F2BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1FF1885-E7F3-4E8B-BFF9-57E9D696F2BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1FF1885-E7F3-4E8B-BFF9-57E9D696F2BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29FBE171-45CE-4CAE-BC99-4DB09E07ACA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29FBE171-45CE-4CAE-BC99-4DB09E07ACA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29FBE171-45CE-4CAE-BC99-4DB09E07ACA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29FBE171-45CE-4CAE-BC99-4DB09E07ACA6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
