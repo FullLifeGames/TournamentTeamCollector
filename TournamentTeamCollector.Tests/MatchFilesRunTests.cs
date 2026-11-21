@@ -246,5 +246,36 @@ namespace TournamentTeamCollector.Tests
             var tournaments = Read("tournaments.json")["tournaments"]!;
             Assert.That(tournaments.Select(t => ((int)t["category"]!, (string?)t["forum"])), Is.All.EqualTo((2, (string?)null)));
         }
+
+        [Test]
+        public async Task MarksTheLeadsOfAGameWithoutTeamPreview()
+        {
+            // The scouter knows who led only when the replay shows no team preview (Gen 1 to 4).
+            const string gen3Replay = "https://replay.pokemonshowdown.com/smogtours-gen3ou-848012";
+            var gen3 = JObject.Parse(File.ReadAllText(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "smogtours-gen9ou-848010.json")));
+            gen3["id"] = "smogtours-gen3ou-848012";
+            gen3["formatid"] = "gen3ou";
+            gen3["format"] = "[Gen 3] OU";
+            gen3["log"] = string.Join('\n', ((string)gen3["log"]!).Split('\n')
+                .Where(line => line != "|clearpoke" && line != "|teampreview" && !line.StartsWith("|poke|") && !line.StartsWith("|teamsize|"))
+                .Select(line => line == "|gen|9" ? "|gen|3" : line == "|tier|[Gen 9] OU" ? "|tier|[Gen 3] OU" : line));
+            _server.Serve(gen3Replay + ".json", gen3.ToString());
+            ParserOutput.Write(_options.MatchesPath!, ParserOutput.SmogonUsers(
+                new Dictionary<string, string>() { ["pitfire"] = "Pitfire", ["cl main"] = "CL Main" },
+                ParserOutput.Match("3700001", "Test Open - Round 1", "pitfire", "cl main", Replay).Posted(2025, 6, 7),
+                ParserOutput.Match("3700002", "Test Open - Finals", "pitfire", "cl main", gen3Replay).Posted(2025, 6, 14)
+            ));
+
+            Assert.That(await Collector.RunAsync(_options, _server), Is.EqualTo(ExitCodes.Done));
+
+            List<string> Leads(string format)
+            {
+                var file = Read($"Formats/{format}.json");
+                var species = file["species"]!.Values<string>().ToList();
+                return file["teams"]!.SelectMany(team => team).Where(pokemon => (int)pokemon[5]! == 1).Select(pokemon => species[(int)pokemon[0]!]!).ToList();
+            }
+            Assert.That(Leads("gen3ou"), Is.EquivalentTo(new[] { "Deoxys-Speed", "Gholdengo" }), "the first Pokémon of each side");
+            Assert.That(Leads("gen9ou"), Is.Empty, "with team preview the scouter marks none");
+        }
     }
 }
