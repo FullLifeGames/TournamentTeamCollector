@@ -87,3 +87,12 @@ Exit codes: 0 done, 1 error, 2 bot check, unexpected page or replay server refus
 ## Tests
 
 `dotnet test` runs offline: the replay server is a fake in memory that serves a saved replay (`TournamentTeamCollector.Tests/Fixtures`).
+
+`DerivationTests` derives the Tournaments and Categories of a real parser output without downloading a replay, and measures memory with simulated Games; it runs only when asked for:
+
+```
+TTC_DERIVATION_MATCHES=output.json TTC_DERIVATION_FORUMS=forums.json TTC_DERIVATION_OUTPUT=derivation \
+  dotnet test --filter FullyQualifiedName~DerivationTests
+```
+
+It writes `collector-derivation.txt` (counts per Category, the 40 Tournaments with the most threads and 40 at random, with their Rounds) and `derived-tournaments.json` into `TTC_DERIVATION_OUTPUT`.
