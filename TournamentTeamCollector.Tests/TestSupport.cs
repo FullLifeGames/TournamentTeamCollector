@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Caching.Distributed;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
 using System.Net;
 using TournamentParser.Data;
@@ -96,11 +97,58 @@ namespace TournamentTeamCollector.Tests
             return users;
         }
 
+        /// <summary>The match as posted on that day; the parser writes post dates without offset.</summary>
+        public static TournamentMatch Posted(this TournamentMatch match, int year, int month, int day)
+        {
+            match.PostDate = new DateTime(year, month, day, 18, 30, 0, DateTimeKind.Unspecified);
+            return match;
+        }
+
+        /// <summary>The match with this winner, or none for null.</summary>
+        public static TournamentMatch WonBy(this TournamentMatch match, string? winner)
+        {
+            match.Winner = winner;
+            return match;
+        }
+
+        /// <summary>
+        /// The users of the matches as the parser names them: the matches name users by key (lower case), and each user has
+        /// its name as written on Smogon.
+        /// </summary>
+        public static Dictionary<string, User> SmogonUsers(IReadOnlyDictionary<string, string> names, params TournamentMatch[] matches)
+        {
+            var users = Users(matches);
+            foreach (var user in users.Values)
+            {
+                user.NormalName = names.GetValueOrDefault(user.Name!, user.Name!);
+            }
+            return users;
+        }
+
+        /// <summary>The match table of the matches, as a run with match files reads them.</summary>
+        public static MatchTable Table(params TournamentMatch[] matches) => Table(new MatchTable(), matches);
+
+        public static MatchTable Table(MatchTable table, params TournamentMatch[] matches)
+        {
+            TournamentMatches.GroupByThread(Users(matches).Values, table);
+            return table;
+        }
+
         /// <summary>Writes the users as TournamentParser.Cmd writes output.json.</summary>
         public static void Write(string path, IDictionary<string, User> users)
         {
             using var file = File.CreateText(path);
             new JsonSerializer().Serialize(file, users);
+        }
+    }
+
+    internal static class JsonFile
+    {
+        /// <summary>Parses JSON as written, without reading dates into DateTime (which prints them in the test culture).</summary>
+        public static JObject Read(string path)
+        {
+            using var reader = new JsonTextReader(File.OpenText(path)) { DateParseHandling = DateParseHandling.None };
+            return JObject.Load(reader);
         }
     }
 
