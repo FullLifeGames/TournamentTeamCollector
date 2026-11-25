@@ -24,9 +24,9 @@ namespace TournamentTeamCollector
         private const int NoOwner = -1;
 
         /// <summary>A Team of a fallback Game, stored once when the first Game that uses it is recorded.</summary>
-        private sealed class PendingTeam(ushort[] encoded)
+        private sealed class PendingTeam(int[] encoded)
         {
-            public ushort[] Encoded { get; } = encoded;
+            public int[] Encoded { get; } = encoded;
 
             public int Index { get; set; } = -1;
         }
@@ -42,7 +42,7 @@ namespace TournamentTeamCollector
         // Thread -> the replay key hashes waiting for it.
         private readonly Dictionary<int, List<long>> _waiting = [];
         private readonly List<GameEntry> _games = [];
-        private readonly List<ushort[]> _teams = [];
+        private readonly List<int[]> _teams = [];
 
         public ScoutedGames(MatchTable matches)
         {
@@ -55,7 +55,7 @@ namespace TournamentTeamCollector
         public IReadOnlyList<GameEntry> Games => _games;
 
         /// <summary>The Teams, encoded by <see cref="TeamCodec"/> with indices into the tables below.</summary>
-        public IReadOnlyList<ushort[]> Teams => _teams;
+        public IReadOnlyList<int[]> Teams => _teams;
 
         /// <summary>Format ids (gen9ou), and the name of each as the replay shows it ([Gen 9] OU).</summary>
         public StringTable Formats { get; } = new();
@@ -65,11 +65,11 @@ namespace TournamentTeamCollector
         /// <summary>The Showdown names the players used, as written in the replays.</summary>
         public StringTable Alts { get; } = new();
 
-        public StringTable Species { get; } = new(TeamCodec.MaxTableSize);
-        public StringTable Items { get; } = new(TeamCodec.MaxTableSize);
-        public StringTable Abilities { get; } = new(TeamCodec.MaxTableSize);
-        public StringTable Teras { get; } = new(TeamCodec.MaxTableSize);
-        public StringTable Moves { get; } = new(TeamCodec.MaxTableSize);
+        public StringTable Species { get; } = new();
+        public StringTable Items { get; } = new();
+        public StringTable Abilities { get; } = new();
+        public StringTable Teras { get; } = new();
+        public StringTable Moves { get; } = new();
 
         /// <summary>
         /// Takes the Games of a scouted thread: the merged teams with their replays, as written to output.json. Call it once
