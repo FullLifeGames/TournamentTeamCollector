@@ -6,12 +6,13 @@ namespace TournamentTeamCollector
 {
     /// <summary>
     /// Writes the outputs of a run: output.json, outputJustThreads.json, newOutput.json and Tournaments/ with
-    /// &lt;thread id&gt;.json, &lt;thread id&gt;.txt and outputJustThreads.json.
+    /// &lt;thread id&gt;.json, &lt;thread id&gt;.txt and outputJustThreads.json, and Matches/ if the run asks for it.
     /// <para>
     /// Tournaments are added one at a time, in the order of output.json (by thread name), and written right away, so a run
     /// holds the teams of one tournament instead of all of them (some 550,000 teams for all of Smogon's tournaments).
     /// Everything goes into a staging folder that <see cref="CommitAsync"/> moves into place: a run that stops or fails leaves
-    /// the previous outputs as they were, and Tournaments/ holds only the tournaments of the run.
+    /// the previous outputs as they were, and Tournaments/ holds only the tournaments of the run. Matches/ groups the Games
+    /// across threads, so it is written at the end, from what <see cref="MatchFileRun"/> kept of each thread.
     /// </para>
     /// </summary>
     public sealed class OutputWriter : IDisposable
@@ -19,6 +20,7 @@ namespace TournamentTeamCollector
         public const string TournamentsFolder = "Tournaments";
         private const string StagingFolder = ".output-new";
         private const string PreviousTournamentsFolder = ".Tournaments-previous";
+        private const string PreviousMatchesFolder = ".Matches-previous";
         private const string JustThreadsFileName = "outputJustThreads.json";
         private const string NewOutputFileName = "newOutput.json";
 
@@ -31,14 +33,17 @@ namespace TournamentTeamCollector
         private readonly JsonSerializer _serializer = new();
         private readonly JsonTextWriter _output;
         private readonly JsonTextWriter _newOutput;
+        private readonly MatchFileRun? _matchFiles;
         private readonly List<(string Id, TournamentParser.Data.Thread Thread)> _threads = [];
         private bool _committed;
 
         public int Teams { get; private set; }
 
-        public OutputWriter(string directory)
+        /// <param name="matchFiles">Also writes Matches/ from it, if given.</param>
+        public OutputWriter(string directory, MatchFileRun? matchFiles = null)
         {
             _directory = directory;
+            _matchFiles = matchFiles;
             _staging = Path.Combine(directory, StagingFolder);
             if (Directory.Exists(_staging))
             {
@@ -76,6 +81,8 @@ namespace TournamentTeamCollector
             // Carries the Outputs set above.
             _newOutput.WritePropertyName(id);
             _serializer.Serialize(_newOutput, tournament);
+
+            _matchFiles?.AddThread(id, tournament.ScoutingResult?.Teams);
         }
 
         /// <summary>Completes the files and moves them into place.</summary>
@@ -86,13 +93,31 @@ namespace TournamentTeamCollector
             var justThreads = _threads.ToDictionary(entry => entry.Id, entry => entry.Thread);
             Serialize(Path.Combine(_staging, JustThreadsFileName), justThreads);
             Serialize(Path.Combine(_stagingTournaments, JustThreadsFileName), justThreads);
+            // Before anything moves: a failure here leaves all previous outputs as they were.
+            _matchFiles?.Write(Path.Combine(_staging, MatchFiles.Folder));
 
             foreach (var file in new[] { RunOptions.OutputFileName, JustThreadsFileName, NewOutputFileName })
             {
                 File.Move(Path.Combine(_staging, file), Path.Combine(_directory, file), overwrite: true);
             }
-            var live = Path.Combine(_directory, TournamentsFolder);
-            var previous = Path.Combine(_directory, PreviousTournamentsFolder);
+            var previous = new List<string>() { MoveIntoPlace(TournamentsFolder, PreviousTournamentsFolder) };
+            if (_matchFiles != null)
+            {
+                previous.Add(MoveIntoPlace(MatchFiles.Folder, PreviousMatchesFolder));
+            }
+            Directory.Delete(_staging, true);
+            foreach (var folder in previous.Where(Directory.Exists))
+            {
+                await Task.Run(() => Directory.Delete(folder, true)).ConfigureAwait(false);
+            }
+            _committed = true;
+        }
+
+        /// <summary>Replaces a folder of the outputs by the staged one; returns where the previous one went.</summary>
+        private string MoveIntoPlace(string folder, string previousFolder)
+        {
+            var live = Path.Combine(_directory, folder);
+            var previous = Path.Combine(_directory, previousFolder);
             if (Directory.Exists(previous))
             {
                 Directory.Delete(previous, true);
@@ -101,13 +126,8 @@ namespace TournamentTeamCollector
             {
                 Directory.Move(live, previous);
             }
-            Directory.Move(_stagingTournaments, live);
-            Directory.Delete(_staging, true);
-            if (Directory.Exists(previous))
-            {
-                await Task.Run(() => Directory.Delete(previous, true)).ConfigureAwait(false);
-            }
-            _committed = true;
+            Directory.Move(Path.Combine(_staging, folder), live);
+            return previous;
         }
 
         /// <summary>Without <see cref="CommitAsync"/>, removes everything written: the previous outputs stay as they were.</summary>

@@ -17,8 +17,27 @@ namespace TournamentTeamCollector
         /// <summary>Analysed replays, and replays the server no longer has.</summary>
         public string ReplayDatabasePath { get; set; } = "ShowdownReplayScouter.db";
 
-        /// <summary>Folder that receives output.json, outputJustThreads.json, newOutput.json and Tournaments/.</summary>
+        /// <summary>Folder that receives output.json, outputJustThreads.json, newOutput.json, Tournaments/ and Matches/.</summary>
         public string OutputDirectory { get; set; } = ".";
+
+        /// <summary>
+        /// Whether a complete run also writes Matches/, the files of the Tournament Teams search view. The program turns it on;
+        /// it is off here so that a caller of <see cref="Collector.RunAsync"/> that does not ask for it gets exactly the
+        /// outputs of version 2.
+        /// </summary>
+        public bool MatchFiles { get; set; }
+
+        /// <summary>
+        /// forums.json of TournamentParser: the forum of each thread, for the Category of a Tournament. Without it, or if
+        /// the file does not exist, the Category comes from the name rules alone.
+        /// </summary>
+        public string? ForumsPath { get; set; }
+
+        /// <summary>The Category rules, a data file of the repository copied next to the program.</summary>
+        public string CategoriesPath { get; set; } = Path.Combine(AppContext.BaseDirectory, "Data", "categories.json");
+
+        /// <summary>Hand-kept corrections of the derived Tournaments, Categories and Players, copied next to the program.</summary>
+        public string OverridesPath { get; set; } = Path.Combine(AppContext.BaseDirectory, "Data", "overrides.json");
 
         /// <summary>Pause between two requests to the replay server.</summary>
         public TimeSpan RequestDelay { get; set; } = TimeSpan.FromSeconds(1);

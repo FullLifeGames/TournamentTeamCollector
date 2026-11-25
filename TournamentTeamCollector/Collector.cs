@@ -39,9 +39,16 @@ namespace TournamentTeamCollector
             SQLitePCL.Batteries_V2.Init();
 
             Dictionary<string, ThreadWithReplays> tournaments;
+            MatchFileRun? matchFiles = null;
             try
             {
-                tournaments = await LoadTournamentsAsync(options).ConfigureAwait(false);
+                // Before the matches: a broken rule or override file stops the run before it reads 440 MB.
+                matchFiles = options.MatchFiles ? MatchFileRun.Load(options) : null;
+                tournaments = await LoadTournamentsAsync(options, matchFiles?.Matches).ConfigureAwait(false);
+                if (tournaments.Count > 0)
+                {
+                    matchFiles?.Derive();
+                }
             }
             catch (Exception e) when (e is SmogonAccessBlockedException or UnexpectedPageException)
             {
@@ -83,7 +90,7 @@ namespace TournamentTeamCollector
             try
             {
                 // Removes what it wrote unless committed: a stop or an error leaves the previous outputs as they were.
-                using var writer = new OutputWriter(options.OutputDirectory);
+                using var writer = new OutputWriter(options.OutputDirectory, matchFiles);
                 await ScoutAsync(tournaments, new Scouter(replayCache), options, writer, guard.StopToken).ConfigureAwait(false);
                 await writer.CommitAsync().ConfigureAwait(false);
                 Console.WriteLine($"Wrote {tournaments.Count} tournaments with {writer.Teams} teams");
@@ -108,12 +115,12 @@ namespace TournamentTeamCollector
             }
         }
 
-        private static async Task<Dictionary<string, ThreadWithReplays>> LoadTournamentsAsync(RunOptions options)
+        private static async Task<Dictionary<string, ThreadWithReplays>> LoadTournamentsAsync(RunOptions options, MatchTable? matches)
         {
             if (options.MatchesPath is string matchesPath && File.Exists(matchesPath))
             {
                 Console.WriteLine($"Reading the matches from {matchesPath}");
-                return TournamentMatches.GroupByThread(TournamentMatches.ReadParserOutput(matchesPath));
+                return TournamentMatches.GroupByThread(TournamentMatches.ReadParserOutput(matchesPath), matches);
             }
             if (options.ParserDatabasePath is string parserDatabasePath)
             {
@@ -121,7 +128,7 @@ namespace TournamentTeamCollector
                 {
                     Console.WriteLine($"{options.MatchesPath} does not exist; crawling Smogon instead");
                 }
-                return TournamentMatches.GroupByThread((await CrawlSmogonAsync(parserDatabasePath, options.MaxRequests).ConfigureAwait(false)).Values);
+                return TournamentMatches.GroupByThread((await CrawlSmogonAsync(parserDatabasePath, options.MaxRequests).ConfigureAwait(false)).Values, matches);
             }
             throw new FileNotFoundException($"{options.MatchesPath} does not exist", options.MatchesPath);
         }

@@ -1,0 +1,45 @@
+{
+  "categories": ["Official", "Team Tournament", "Ladder", "Circuit", "Unofficial", "Tier forum", "PS room", "Other"],
+  "fallback": "Other",
+  "names": [
+    {
+      "category": "Ladder",
+      "pattern": "\\bsmogon tour\\b|ladder tour|ladder tournament"
+    },
+    {
+      "category": "Team Tournament",
+      "pattern": "\\b[a-z0-9]*pl\\b|\\b[a-z]*wc\\b|premier league|world cup|wcop|team tour|snake|draft|auction|\\bcup of\\b|tour wars|league|bowl",
+      "except": "tours plaza premier"
+    }
+  ],
+  "forums": [
+    {
+      "category": "Official",
+      "forums": ["tournaments.34", "smogon-tour.49", "smogon-grand-slam.208", "smogon-classic.334", "official-smogon-tournament.463", "smogon-masters.864", "official-smogon-doubles-tournament.663"]
+    },
+    {
+      "category": "Team Tournament",
+      "forums": ["smogon-premier-league.130", "world-cup-of-pokemon.234", "smogon-champions-league.453", "unofficial-team-tournaments.468"]
+    },
+    {
+      "category": "Ladder",
+      "forums": ["official-ladder-tournament.465"]
+    },
+    {
+      "category": "Circuit",
+      "forums": ["circuit-tournaments.351"]
+    },
+    {
+      "category": "Unofficial",
+      "forums": ["unofficial-tournaments.666"]
+    },
+    {
+      "category": "Tier forum",
+      "forums": ["smogon-metagames.725", "ruins-of-alph.31", "battle-stadium-singles.532"]
+    },
+    {
+      "category": "PS room",
+      "forums": ["ps-tournaments.698"]
+    }
+  ]
+}
