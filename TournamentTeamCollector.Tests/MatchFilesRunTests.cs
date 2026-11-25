@@ -199,7 +199,8 @@ namespace TournamentTeamCollector.Tests
         private HashSet<string> TeamsOfOutput(string threadId) => JsonFile.Read(Out("output.json"))[threadId]!["Teams"]!
             .Select(team => string.Join(" / ", team["Pokemon"]!.Select(mon => Describe(
                 (string)mon["Name"]!, (string?)mon["Item"], (string?)mon["Ability"], (string?)mon["TeraType"], mon["Moves"]!.Values<string>()!, (bool)mon["Lead"]!,
-                mon["AltNames"]!.Values<string>().Append((string?)mon["FormName"]).OfType<string>().Select(name => name.Split(", ")[0]).Where(name => name != (string)mon["Name"]!).Distinct()!))))
+                mon["AltNames"]!.Values<string>().Append((string?)mon["FormName"]).OfType<string>().Select(name => name.Split(", ")[0])
+                    .Where(name => name != (string)mon["Name"]! && name.Split('-')[0] == ((string)mon["Name"]!).Split('-')[0]).Distinct()!))))
             .ToHashSet();
 
         private static string Describe(string species, string? item, string? ability, string? tera, IEnumerable<string> moves, bool lead, IEnumerable<string> others) =>

@@ -160,6 +160,39 @@ namespace TournamentTeamCollector.Tests
         }
 
         [Test]
+        public void TheOtherNamesOfAPokemonAreItsSpeciesAndFormsNotItsNickname()
+        {
+            static IEnumerable<string> Others(string name, string? form, params string[] altNames) =>
+                TeamCodec.OtherNames(new Pokemon() { Name = name, FormName = form!, AltNames = [.. altNames] });
+
+            Assert.That(Others("Landorus-Therian", null, "Landorus", "Elon Tusk", "Landorus-Therian, M"), Is.EqualTo(new[] { "Landorus" }));
+            Assert.That(Others("Urshifu", "Urshifu-Rapid-Strike", "Urshifu-*"), Is.EqualTo(new[] { "Urshifu-*", "Urshifu-Rapid-Strike" }));
+            Assert.That(Others("Necrozma-Dusk-Mane", null, "Necrozma", "Necrozma-Ultra", "DaVinki"), Is.EqualTo(new[] { "Necrozma", "Necrozma-Ultra" }), "a form it took in the Game");
+            Assert.That(Others("Bisharp", null, "Tsareena"), Is.Empty, "a nickname that is another species");
+            Assert.That(Others("Snorlax", null, "Snorlax Fan", "Snor", "snorlax"), Is.Empty);
+            Assert.That(Others("Type: Null", null, "Type"), Is.Empty);
+        }
+
+        [Test]
+        public void TheTeamsOfARunHoldMoreValuesThanSixteenBitsCount()
+        {
+            var games = new ScoutedGames(ParserOutput.Table(ParserOutput.Match("1", "Cup", "mada", "setsu", Server + "gen9ou-1")));
+
+            var teams = Enumerable.Range(0, 70_000).Select(i => TeamCodec.Encode(new Team()
+            {
+                Pokemon = [new Pokemon() { Name = $"Species {i}", Item = $"Item {i}", Ability = $"Ability {i}", TeraType = $"Tera {i}", Moves = [$"Move {i}", "Protect"], Lead = i % 2 == 1 }],
+            }, games)).ToList();
+
+            var last = TeamCodec.Decode(teams[^1]).Single();
+            Assert.That(
+                (games.Species[last.Species], games.Items[last.Item], games.Abilities[last.Ability], games.Teras[last.Tera], games.Moves[last.Moves[0]], games.Moves[last.Moves[1]], last.Lead),
+                Is.EqualTo(("Species 69999", "Item 69999", "Ability 69999", "Tera 69999", "Move 69999", "Protect", true)));
+            Assert.That(TeamCodec.Decode(TeamCodec.Encode(new Team() { Pokemon = [new Pokemon() { Name = "Ditto" }] }, games)).Single(),
+                Is.EqualTo(new TeamCodec.Member(games.Species.Find("Ditto"), -1, -1, -1, false, [], [])).Using<TeamCodec.Member>((a, b) =>
+                    (a.Species, a.Item, a.Ability, a.Tera, a.Lead, a.Moves.Length, a.OtherNames.Length) == (b.Species, b.Item, b.Ability, b.Tera, b.Lead, b.Moves.Length, b.OtherNames.Length)));
+        }
+
+        [Test]
         public void AFormatFileHoldsAMatchWithAllItsGamesAlsoThoseInOtherFormats()
         {
             using var dir = new TempDirectory();

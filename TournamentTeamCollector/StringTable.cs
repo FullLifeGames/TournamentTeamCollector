@@ -8,13 +8,6 @@ namespace TournamentTeamCollector
     {
         private readonly Dictionary<string, int> _index = new(StringComparer.Ordinal);
         private readonly List<string> _values = [];
-        private readonly int _maxCount;
-
-        /// <param name="maxCount">More strings than this are an error: <see cref="TeamCodec"/> keeps indices in 16 bits.</param>
-        public StringTable(int maxCount = int.MaxValue)
-        {
-            _maxCount = maxCount;
-        }
 
         public int Count => _values.Count;
 
@@ -29,10 +22,6 @@ namespace TournamentTeamCollector
             }
             if (!_index.TryGetValue(value, out var index))
             {
-                if (_values.Count >= _maxCount)
-                {
-                    throw new InvalidOperationException($"More than {_maxCount} distinct values; the team encoding holds no more.");
-                }
                 index = _values.Count;
                 _values.Add(value);
                 _index.Add(value, index);
