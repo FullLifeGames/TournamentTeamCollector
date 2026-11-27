@@ -147,6 +147,20 @@ namespace TournamentTeamCollector.Tests
         }
 
         [Test]
+        public void AWinnerTheParserGuessedIsNoWinner()
+        {
+            var guessed = ParserOutput.Match("2", "Camove Cash Cup II - Round 6", "splodge", "bbp", Server + "gen9nationaldex-102").Posted(2025, 10, 20).WonBy("bbp");
+            guessed.WinnerGuessed = true;
+            var table = ParserOutput.Table(
+                ParserOutput.Match("1", "Camove Cash Cup II - Round 4", "splodge", "kor", Server + "gen9nationaldex-101").Posted(2025, 10, 6).WonBy("splodge"),
+                guessed
+            );
+
+            Assert.That(table.Matches[MatchOf(table, "1", "splodge")].Winner, Is.EqualTo(1), "named by the thread");
+            Assert.That(table.Matches[MatchOf(table, "2", "splodge")].Winner, Is.EqualTo(0), "guessed by the parser");
+        }
+
+        [Test]
         public void TwoSmogonUsersOfOnePlayerAreOnePlayer()
         {
             var table = ParserOutput.Table(new MatchTable(new Overrides() { Players = { ["Mada Alt"] = "mada" } }.PlayerAliases()),
