@@ -157,7 +157,9 @@ namespace TournamentTeamCollector
 
             var a = AddPlayer(match.FirstUser);
             var b = AddPlayer(match.SecondUser);
-            var winnerKey = string.IsNullOrWhiteSpace(match.Winner) ? null : Canonical(match.Winner);
+            // Only a winner the thread names. Without a bolded name the parser guesses that the player who plays on in the
+            // tour won (WinnerGuessed), which fails where both play on, as in double elimination and team tours.
+            var winnerKey = string.IsNullOrWhiteSpace(match.Winner) || match.WinnerGuessed ? null : Canonical(match.Winner);
             var winner = winnerKey == null ? 0 : a >= 0 && winnerKey == _playerKeys[a] ? 1 : b >= 0 && winnerKey == _playerKeys[b] ? 2 : 0;
             var matchIndex = _matches.Count;
             _matches.Add(new MatchEntry(threadIndex, a, b, (byte)winner, day, links));
